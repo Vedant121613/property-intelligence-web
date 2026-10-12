@@ -925,12 +925,12 @@ if (activeDist) {
   console.log(`[Pureframe Backend] Serving static frontend SPA build from: ${activeDist}`);
   app.use(express.static(activeDist));
 
-  // SPA fallback for all non-API GET requests
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
-      return next();
+  // SPA fallback for all non-API GET requests (Express 5 compatible)
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api')) {
+      return res.sendFile(resolve(activeDist, 'index.html'));
     }
-    res.sendFile(resolve(activeDist, 'index.html'));
+    next();
   });
 }
 
