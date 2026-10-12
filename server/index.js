@@ -28,33 +28,9 @@ const PORT = process.env.PORT || 5000;
 // ========================================================
 // 1. CORS Security Configuration
 // ========================================================
-const rawOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map(s => s.trim().replace(/\/+$/, '')).filter(Boolean)
-  : [];
-
-const defaultOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:8080',
-  'http://localhost:3000'
-];
-
-const allowedOrigins = Array.from(new Set([...rawOrigins, ...defaultOrigins]));
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow non-browser requests (e.g. curl/server-to-server/mobile) or approved frontend origins
-    if (!origin) {
-      return callback(null, true);
-    }
-    const cleanOrigin = origin.replace(/\/+$/, '');
-    if (allowedOrigins.includes(cleanOrigin) || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    console.warn(`[CORS] Blocked request from origin: ${origin}`);
-    return callback(new Error(`CORS Error: Origin ${origin} not permitted.`));
-  },
-  credentials: false
+  origin: true,
+  credentials: true
 }));
 
 app.use(express.json());
@@ -947,7 +923,7 @@ app.use((err, req, res, next) => {
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Pureframe Backend] Server running on http://0.0.0.0:${PORT}`);
-  console.log(`[Pureframe Backend] Configured CORS origins: ${allowedOrigins.join(', ')}`);
+  console.log('[Pureframe Backend] CORS enabled for all origins.');
   validateMsg91Config();
 });
 
