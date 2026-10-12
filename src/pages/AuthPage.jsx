@@ -33,14 +33,8 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
         onNavigate('home');
       }
     } else {
-      setErrorMsg(res.message || 'Access denied: Only user@123 is authorized.');
+      setErrorMsg(res.message || 'Access denied: Invalid credentials.');
     }
-  };
-
-  const handleQuickFill = () => {
-    setUsername('user@123');
-    setPassword('pass@123');
-    setErrorMsg('');
   };
 
   return (
@@ -106,49 +100,15 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
             margin: '0 0 6px',
             color: '#ffffff'
           }}>
-            Authorized Sign-In
+            Sign-In
           </h1>
           <p style={{
             fontSize: '0.875rem',
             color: '#94a3b8',
             margin: 0
           }}>
-            Single-User Protected Access
+            Enter your credentials to continue
           </p>
-        </div>
-
-        {/* Quick Fill Helper */}
-        <div style={{
-          marginBottom: '16px',
-          background: 'rgba(37, 99, 235, 0.12)',
-          border: '1px solid rgba(59, 130, 246, 0.25)',
-          borderRadius: '12px',
-          padding: '10px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '0.8rem',
-          color: '#bfdbfe'
-        }}>
-          <div>
-            Authorized Account: <strong style={{ color: '#ffffff' }}>user@123</strong>
-          </div>
-          <button
-            type="button"
-            onClick={handleQuickFill}
-            style={{
-              background: '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '4px 10px',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            Fill Credentials
-          </button>
         </div>
 
         {/* Form */}
@@ -161,14 +121,14 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
               color: '#cbd5e1',
               marginBottom: '6px'
             }}>
-              Username
+              Username / ID
             </label>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="user@123"
+                placeholder="Enter your username or ID"
                 style={{
                   width: '100%',
                   padding: '12px 14px 12px 40px',
@@ -200,7 +160,7 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="pass@123"
+                placeholder="Enter your password"
                 style={{
                   width: '100%',
                   padding: '12px 14px 12px 40px',

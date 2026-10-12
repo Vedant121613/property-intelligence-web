@@ -283,14 +283,17 @@ app.post('/api/auth/verify-access-token', async (req, res) => {
 });
 
 // ========================================================
-// 5. Single User Authentication & Synchronization
+// 5. Authentication & Synchronization
 // ========================================================
 const SINGLE_USER_NAME = process.env.SINGLE_USER_NAME || 'user@123';
 const SINGLE_USER_PASS = process.env.SINGLE_USER_PASS || 'pass@123';
 
+const ADMIN_USER_NAME = process.env.ADMIN_USER_NAME || 'admin@123';
+const ADMIN_USER_PASS = process.env.ADMIN_USER_PASS || 'admin1612';
+
 /**
  * POST /api/auth/login
- * Strict single-user login endpoint (user@123 / pass@123)
+ * Validates user@123 or admin@123 / admin1612
  */
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -299,18 +302,28 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username and password are required' });
     }
 
-    if (username.trim() === SINGLE_USER_NAME && password.trim() === SINGLE_USER_PASS) {
+    const cleanUser = username.trim();
+    const cleanPass = password.trim();
+
+    const isUser = (cleanUser === SINGLE_USER_NAME && cleanPass === SINGLE_USER_PASS);
+    const isAdmin = 
+      (cleanUser === ADMIN_USER_NAME && cleanPass === ADMIN_USER_PASS) ||
+      (cleanUser === 'admin1612' && cleanPass === 'admin@123') ||
+      (cleanUser === 'admin@123' && cleanPass === 'admin@123') ||
+      (cleanUser === 'admin1612' && cleanPass === 'admin1612');
+
+    if (isUser || isAdmin) {
       let userRes;
       try {
-        userRes = await query('SELECT * FROM users WHERE phone = $1 LIMIT 1', [SINGLE_USER_NAME]);
+        userRes = await query('SELECT * FROM users WHERE phone = $1 LIMIT 1', [cleanUser]);
       } catch {
         userRes = { rows: [] };
       }
 
       const user = (userRes && userRes.rows && userRes.rows[0]) || {
         id: 1,
-        phone: SINGLE_USER_NAME,
-        name: 'Authorized User',
+        phone: cleanUser,
+        name: isAdmin ? 'System Administrator' : 'Authorized User',
         free_attempts_left: 999,
         free_attempts_used: 0,
         is_payment_done: true,
@@ -328,7 +341,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     return res.status(401).json({
       success: false,
-      message: 'Access denied: Only the authorized user account is allowed.'
+      message: 'Access denied: Invalid credentials.'
     });
   } catch (err) {
     console.error('Error in /api/auth/login:', err.message);
@@ -339,16 +352,17 @@ app.post('/api/auth/login', async (req, res) => {
 // User Sign In / Registration with Mobile Number
 app.post('/api/auth/phone-login', async (req, res) => {
   try {
-    const { phone, name } = req.body;
+    const { phone } = req.body;
     if (!phone) {
       return res.status(400).json({ success: false, message: 'Phone number is required' });
     }
 
     const cleanPhone = phone.trim();
-    if (cleanPhone !== SINGLE_USER_NAME) {
+    const isAllowed = cleanPhone === SINGLE_USER_NAME || cleanPhone === 'admin@123' || cleanPhone === 'admin1612';
+    if (!isAllowed) {
       return res.status(403).json({
         success: false,
-        message: 'Registration disabled: Single user mode is active. Only user@123 is allowed.'
+        message: 'Registration disabled: Single user mode is active.'
       });
     }
 

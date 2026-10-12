@@ -16,16 +16,13 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Delete any old non-authorized users to strictly maintain single-user integrity
-DELETE FROM users WHERE phone != 'user@123';
-
--- Seed the single authorized user (user@123) with full unlocked privileges
+-- Seed authorized accounts with full unlocked privileges
 INSERT INTO users (phone, name, free_attempts_left, free_attempts_used, is_payment_done, selected_plan, plan_activated_at, unlocked_deeds)
 VALUES 
-    ('user@123', 'Authorized User', 999, 0, TRUE, 'enterprise', CURRENT_TIMESTAMP, '["11089052"]'::jsonb)
+    ('user@123', 'Authorized User', 999, 0, TRUE, 'enterprise', CURRENT_TIMESTAMP, '["11089052"]'::jsonb),
+    ('admin@123', 'System Administrator', 999, 0, TRUE, 'enterprise', CURRENT_TIMESTAMP, '["11089052"]'::jsonb)
 ON CONFLICT (phone) DO UPDATE 
-SET name = 'Authorized User',
-    free_attempts_left = 999,
+SET free_attempts_left = 999,
     is_payment_done = TRUE,
     selected_plan = 'enterprise',
     updated_at = CURRENT_TIMESTAMP;

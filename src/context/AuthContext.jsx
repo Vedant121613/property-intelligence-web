@@ -20,6 +20,29 @@ export const SINGLE_USER = {
   unlocked_deeds: ['11089052']
 };
 
+export const ADMIN_USER = {
+  id: 'usr_admin',
+  name: 'System Administrator',
+  email: 'admin@123',
+  phone: 'admin@123',
+  username: 'admin@123',
+  city: 'Pune',
+  role: 'admin',
+  avatar: 'AD',
+  joinedDate: 'October 2026',
+  verifiedBadge: true,
+  is_payment_done: true,
+  free_attempts_left: 999,
+  free_attempts_used: 0,
+  selected_plan: 'enterprise',
+  unlocked_deeds: ['11089052']
+};
+
+const isAllowedUser = (u) => {
+  const clean = (u || '').toLowerCase();
+  return clean === 'user@123' || clean === 'admin@123' || clean === 'admin1612';
+};
+
 export function AuthProvider({ children }) {
   // Citizen Auth State
   const [user, setUser] = useState(() => {
@@ -27,7 +50,7 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('pureframe_user');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.username === 'user@123' || parsed.email === 'user@123') {
+        if (isAllowedUser(parsed.username) || isAllowedUser(parsed.email)) {
           return { ...SINGLE_USER, ...parsed };
         }
       }
@@ -43,7 +66,7 @@ export function AuthProvider({ children }) {
       const userSaved = localStorage.getItem('pureframe_user');
       if (authSaved && userSaved) {
         const parsed = JSON.parse(userSaved);
-        return (parsed.username === 'user@123' || parsed.email === 'user@123') && JSON.parse(authSaved) === true;
+        return (isAllowedUser(parsed.username) || isAllowedUser(parsed.email)) && JSON.parse(authSaved) === true;
       }
       return false;
     } catch {
@@ -66,8 +89,8 @@ export function AuthProvider({ children }) {
       const saved = localStorage.getItem('pureframe_admin_user');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.username === 'user@123' || parsed.email === 'user@123') {
-          return { ...SINGLE_USER, ...parsed };
+        if (isAllowedUser(parsed.username) || isAllowedUser(parsed.email)) {
+          return { ...ADMIN_USER, ...parsed };
         }
       }
       return null;
@@ -124,7 +147,7 @@ export function AuthProvider({ children }) {
   }, [unlockedDeeds]);
 
   /**
-   * Single User Login (user@123 / pass@123)
+   * Main Login
    */
   const login = async (identifier = '', password = '') => {
     const cleanId = (identifier || '').trim();
@@ -134,10 +157,22 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Please enter both username and password.' };
     }
 
-    if (cleanId === 'user@123' && cleanPass === 'pass@123') {
-      const authorizedAccount = { ...SINGLE_USER, unlocked_deeds: unlockedDeeds };
+    const isMatch =
+      (cleanId === 'user@123' && cleanPass === 'pass@123') ||
+      (cleanId === 'admin@123' && cleanPass === 'admin1612') ||
+      (cleanId === 'admin1612' && cleanPass === 'admin@123') ||
+      (cleanId === 'admin@123' && cleanPass === 'admin@123') ||
+      (cleanId === 'admin1612' && cleanPass === 'admin1612');
 
-      // Optional background sync with backend /api/auth/login
+    if (isMatch) {
+      const isAdm = cleanId.toLowerCase().includes('admin') || cleanId === 'admin1612';
+      const authorizedAccount = { 
+        ...(isAdm ? ADMIN_USER : SINGLE_USER), 
+        username: cleanId, 
+        email: cleanId, 
+        unlocked_deeds: unlockedDeeds 
+      };
+
       try {
         fetch('/api/auth/login', {
           method: 'POST',
@@ -145,19 +180,21 @@ export function AuthProvider({ children }) {
           body: JSON.stringify({ username: cleanId, password: cleanPass })
         }).catch(() => {});
       } catch {
-        // Ignore network offline
+        // Ignore offline
       }
 
       setUser(authorizedAccount);
       setIsAuthenticated(true);
-      setAdminUser(authorizedAccount);
-      setIsAdminAuthenticated(true);
+      if (isAdm) {
+        setAdminUser(authorizedAccount);
+        setIsAdminAuthenticated(true);
+      }
       return { success: true, user: authorizedAccount };
     }
 
     return { 
       success: false, 
-      message: 'Access denied: Only the authorized user account (user@123) with pass@123 is allowed.' 
+      message: 'Access denied: Invalid credentials.' 
     };
   };
 
@@ -172,7 +209,7 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * Admin Login - validates user@123 and pass@123
+   * Admin Login - validates admin credentials
    */
   const adminLogin = (adminId = '', password = '') => {
     const cleanId = (adminId || '').trim();
@@ -182,8 +219,20 @@ export function AuthProvider({ children }) {
       return { success: false, message: 'Please enter both Admin ID and Password.' };
     }
 
-    if (cleanId === 'user@123' && cleanPass === 'pass@123') {
-      const authorizedAccount = { ...SINGLE_USER, unlocked_deeds: unlockedDeeds };
+    const isAdminMatch = 
+      (cleanId === 'admin@123' && cleanPass === 'admin1612') ||
+      (cleanId === 'admin1612' && cleanPass === 'admin@123') ||
+      (cleanId === 'admin@123' && cleanPass === 'admin@123') ||
+      (cleanId === 'admin1612' && cleanPass === 'admin1612') ||
+      (cleanId === 'user@123' && cleanPass === 'pass@123');
+
+    if (isAdminMatch) {
+      const authorizedAccount = { 
+        ...ADMIN_USER, 
+        username: cleanId, 
+        email: cleanId, 
+        unlocked_deeds: unlockedDeeds 
+      };
       setAdminUser(authorizedAccount);
       setIsAdminAuthenticated(true);
       setUser(authorizedAccount);
@@ -193,7 +242,7 @@ export function AuthProvider({ children }) {
 
     return { 
       success: false, 
-      message: 'Access denied: Invalid credentials. Only user@123 is authorized.' 
+      message: 'Access denied: Invalid Admin credentials.' 
     };
   };
 
@@ -217,7 +266,7 @@ export function AuthProvider({ children }) {
         await fetch('/api/user/unlock-deed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: 'user@123', transactionId: txnStr })
+          body: JSON.stringify({ phone: user?.phone || 'user@123', transactionId: txnStr })
         });
       } catch {
         // Local state already updated

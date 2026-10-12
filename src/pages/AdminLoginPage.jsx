@@ -79,44 +79,6 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
           </p>
         </div>
 
-        {/* Quick Fill Helper */}
-        <div style={{
-          marginBottom: '16px',
-          background: '#eff6ff',
-          border: '1px solid #bfdbfe',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '0.8rem',
-          color: '#1e40af'
-        }}>
-          <div>
-            Authorized: <strong>user@123</strong>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setAdminId('user@123');
-              setPassword('pass@123');
-              setErrorMsg('');
-            }}
-            style={{
-              background: '#1d4ed8',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '4px 8px',
-              fontSize: '0.725rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            Fill
-          </button>
-        </div>
-
         {/* Login Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
@@ -134,7 +96,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                 type="text"
                 value={adminId}
                 onChange={(e) => setAdminId(e.target.value)}
-                placeholder="user@123"
+                placeholder="Enter Admin ID"
                 required
                 style={{
                   width: '100%',
@@ -166,7 +128,7 @@ export default function AdminLoginPage({ onNavigate, onLoginSuccess }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="pass@123"
+                placeholder="Enter Admin Password"
                 required
                 style={{
                   width: '100%',
