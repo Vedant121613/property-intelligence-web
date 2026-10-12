@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { query } from './db.js';
@@ -306,8 +307,58 @@ app.post('/api/auth/verify-access-token', async (req, res) => {
 });
 
 // ========================================================
-// 5. User Profile & PostgreSQL Synchronization
+// 5. Single User Authentication & Synchronization
 // ========================================================
+const SINGLE_USER_NAME = process.env.SINGLE_USER_NAME || 'user@123';
+const SINGLE_USER_PASS = process.env.SINGLE_USER_PASS || 'pass@123';
+
+/**
+ * POST /api/auth/login
+ * Strict single-user login endpoint (user@123 / pass@123)
+ */
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and password are required' });
+    }
+
+    if (username.trim() === SINGLE_USER_NAME && password.trim() === SINGLE_USER_PASS) {
+      let userRes;
+      try {
+        userRes = await query('SELECT * FROM users WHERE phone = $1 LIMIT 1', [SINGLE_USER_NAME]);
+      } catch {
+        userRes = { rows: [] };
+      }
+
+      const user = (userRes && userRes.rows && userRes.rows[0]) || {
+        id: 1,
+        phone: SINGLE_USER_NAME,
+        name: 'Authorized User',
+        free_attempts_left: 999,
+        free_attempts_used: 0,
+        is_payment_done: true,
+        selected_plan: 'enterprise',
+        unlocked_deeds: ['11089052']
+      };
+
+      return res.json({
+        success: true,
+        user,
+        token: 'auth-session-single-user-token',
+        message: 'Authenticated successfully'
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: 'Access denied: Only the authorized user account is allowed.'
+    });
+  } catch (err) {
+    console.error('Error in /api/auth/login:', err.message);
+    res.status(500).json({ success: false, message: 'Authentication error' });
+  }
+});
 
 // User Sign In / Registration with Mobile Number
 app.post('/api/auth/phone-login', async (req, res) => {
@@ -317,10 +368,14 @@ app.post('/api/auth/phone-login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone number is required' });
     }
 
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-    const userName = name || `User ${cleanPhone.slice(-4)}`;
+    const cleanPhone = phone.trim();
+    if (cleanPhone !== SINGLE_USER_NAME) {
+      return res.status(403).json({
+        success: false,
+        message: 'Registration disabled: Single user mode is active. Only user@123 is allowed.'
+      });
+    }
 
-    // Check if user exists
     const existing = await query('SELECT * FROM users WHERE phone = $1', [cleanPhone]);
     
     if (existing.rows.length > 0) {
@@ -331,17 +386,16 @@ app.post('/api/auth/phone-login', async (req, res) => {
       });
     }
 
-    // Insert new user with 3 free attempts and is_payment_done = false
     const insertResult = await query(
       `INSERT INTO users (phone, name, free_attempts_left, free_attempts_used, is_payment_done, selected_plan, unlocked_deeds)
-       VALUES ($1, $2, 3, 0, FALSE, 'none', '[]'::jsonb)
+       VALUES ($1, $2, 999, 0, TRUE, 'enterprise', '["11089052"]'::jsonb)
        RETURNING *`,
-      [cleanPhone, userName]
+      [cleanPhone, 'Authorized User']
     );
 
     res.json({
       success: true,
-      isNewUser: true,
+      isNewUser: false,
       user: insertResult.rows[0]
     });
   } catch (err) {
@@ -857,6 +911,28 @@ app.get('/api/pune/search', async (req, res) => {
     res.status(500).json({ success: false, error: 'Database error' });
   }
 });
+
+// ========================================================
+// 6.5. Serve Static Frontend SPA Build (Coolify Unified Deployment)
+// ========================================================
+const distCandidates = [
+  resolve(__dirname, 'dist'),
+  resolve(__dirname, '../dist')
+];
+const activeDist = distCandidates.find(p => fs.existsSync(p));
+
+if (activeDist) {
+  console.log(`[Pureframe Backend] Serving static frontend SPA build from: ${activeDist}`);
+  app.use(express.static(activeDist));
+
+  // SPA fallback for all non-API GET requests
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(resolve(activeDist, 'index.html'));
+  });
+}
 
 // ========================================================
 // 7. Global Production Error Handler & Server Lifecycle

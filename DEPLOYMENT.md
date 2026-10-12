@@ -1,107 +1,115 @@
-# Pureframe Production Deployment Guide (Coolify + Docker)
+# Pureframe Production Deployment Guide for Coolify
 
-This guide provides end-to-end instructions for running Pureframe locally, testing with Docker/Docker Compose, and deploying the production architecture to **Coolify**.
-
----
-
-## 1. Architecture Overview
-
-```
-                      INTERNET
-                         │
-                         ▼
-               ┌──────────────────┐
-               │     Coolify      │
-               │ (Traefik/Reverse)│
-               └────────┬─────────┘
-                        │
-            ┌───────────┴───────────┐
-            │                       │
-            ▼                       ▼
-    Frontend Container      Backend Container
-    React / Vite (Nginx)    Node.js / Express
-    Port: 80                Port: 5000
-    https://YOUR_DOMAIN.com https://api.YOUR_DOMAIN.com
-            │                       │
-            │                       ▼
-            │               MSG91 SMS Gateway
-            │               (Secret AuthKey stored
-            │                ONLY on Backend)
-            └───────────┬───────────┘
-                        │
-                        ▼
-                 PostgreSQL (5432)
-```
-
-- **Frontend Container**: Nginx Alpine serving Vite compiled static files with SPA fallback routing. Exposes internal port **80**.
-- **Backend Container**: Node.js 22 LTS Express API listening on **0.0.0.0:5000**. Handles OTP dispatch, token verification, and PostgreSQL queries. Exposes internal port **5000**.
-- **Security Boundary**: MSG91 Secret AuthKey is strictly located in the backend environment. The browser never receives or requires server secrets.
+Complete guide for deploying Pureframe on **Coolify** with PostgreSQL and a **Strict Single-User** architecture.
 
 ---
 
-## 2. Local Development (Without Docker)
+## 1. Single User Account Details
 
-### Prerequisites
-- Node.js 20 or 22 LTS
-- Local PostgreSQL instance (optional, runs in fallback mode if offline)
-
-### Commands
-1. **Install Dependencies**:
-   ```bash
-   # Root / Frontend
-   npm install
-
-   # Backend
-   npm --prefix ./server install
-   ```
-
-2. **Start Backend Server**:
-   ```bash
-   # From root:
-   npm run server
-   # Or from server directory:
-   cd server && npm start
-   ```
-   Backend starts on: `http://localhost:5000`
-
-3. **Start Frontend Dev Server**:
-   ```bash
-   npm run dev
-   ```
-   Frontend starts on: `http://localhost:5173` (or `5174`)
-
-### Local Environment Variables
-- Root `.env`:
-  ```ini
-  VITE_API_BASE_URL=http://localhost:5000
-  ```
-- `server/.env`:
-  ```ini
-  PORT=5000
-  FRONTEND_URL=http://localhost:5173,http://localhost:5174
-  MSG91_AUTH_KEY=<your_msg91_auth_key>
-  MSG91_WIDGET_ID=366a666d3673323037323934
-  PGHOST=localhost
-  PGPORT=5432
-  PGUSER=postgres
-  PGDATABASE=pureframe_db
-  PGPASSWORD=<your_postgres_password>
-  ```
+The platform is configured in **Strict Single-User Mode**:
+- **Username / Identifier**: `user@123`
+- **Password**: `pass@123`
+- **Privileges**: Full Access
+  - Unlimited Deed Unlocks (Enterprise Plan active)
+  - Full Access to MahaRERA and Pune Property Intelligence
+  - Full Access to Admin Portal (`/admin`) and document generation
+  - All public/unknown user registrations are disabled
 
 ---
 
-## 3. Local Docker Testing
+## 2. Coolify Deployment Methods
 
-### Option A: Using Docker Compose (Recommended)
-Spins up PostgreSQL, Backend, and Frontend containers simultaneously:
+Coolify supports two easy deployment approaches. Choose whichever fits your workflow:
+
+### Option 1: Unified Single Container (Recommended — Simplest Setup)
+
+In this setup, a single Docker container builds the React/Vite SPA and serves it directly via the Node.js Express server on port **5000**.
+- **No CORS issues**: Frontend and API live on the exact same domain.
+- **No client-side URL mismatch**: `/api/*` routes are relative.
+- **Automatic DB setup**: The server automatically runs schema migrations and seeds `user@123` on startup.
+
+#### Step-by-Step for Coolify:
+
+1. **Create PostgreSQL in Coolify**:
+   - In Coolify, click **+ New Resource** > **Database** > **PostgreSQL**.
+   - Database name: `pureframe_db`
+   - Once started, copy the **Internal URL** (e.g. `postgresql://postgres:<password>@<internal-host>:5432/pureframe_db`).
+
+2. **Deploy Pureframe Application**:
+   - In Coolify, click **+ New Resource** > **Application** > Select your Git repository.
+   - **Build Pack**: Select `Dockerfile`.
+   - **Base Directory**: `/`
+   - **Dockerfile Path**: `Dockerfile`
+   - **Exposed Port**: `5000`
+   - **Domains**: Enter your domain (e.g., `https://pureframe.yourdomain.com`).
+
+3. **Set Environment Variables in Coolify**:
+   Add the following environment variables:
+   ```ini
+   NODE_ENV=production
+   PORT=5000
+   DATABASE_URL=postgresql://postgres:<password>@<internal-host>:5432/pureframe_db
+   SINGLE_USER_NAME=user@123
+   SINGLE_USER_PASS=pass@123
+   ```
+   *(Optional)* If using MSG91 for SMS/OTP verification:
+   ```ini
+   MSG91_AUTH_KEY=your_msg91_auth_key
+   MSG91_WIDGET_ID=366a666d3673323037323934
+   ```
+
+4. **Click Deploy**:
+   - Coolify will build the Dockerfile and start the container.
+   - On startup, the container connects to PostgreSQL, runs `init-db.sql` automatically, and creates all tables and the `user@123` account.
+   - Coolify automatically provisions free Let's Encrypt SSL certificates for HTTPS.
+
+---
+
+### Option 2: Docker Compose in Coolify (Full Stack in One Resource)
+
+If you prefer deploying the app and database together inside a single Coolify Docker Compose resource:
+
+1. In Coolify, click **+ New Resource** > **Application** > Select your Git repository.
+2. Select **Docker Compose** as the build pack.
+3. Coolify detects `docker-compose.yml` automatically.
+4. Set your domain for the `app` service in Coolify's settings (port `5000`).
+5. Configure Environment Variables if customizing credentials:
+   ```ini
+   PORT=5000
+   SINGLE_USER_NAME=user@123
+   SINGLE_USER_PASS=pass@123
+   POSTGRES_DB=pureframe_db
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=your_secure_password
+   ```
+6. Click **Deploy**. Both the application and PostgreSQL will start together with persistent storage (`pureframe_pgdata`).
+
+---
+
+## 3. Database Schema & Auto-Migration
+
+The database connection in `server/db.js` includes an automatic migration runner on container startup:
+- Creates `users`, `plans`, `unlock_logs`, and `pune_projects` tables.
+- Cleans any old demo accounts and guarantees `user@123` is the sole authorized user.
+- Sets `is_payment_done = TRUE` and unlocks deed `11089052`.
+- Retries connection automatically if PostgreSQL takes a few seconds to start up.
+
+No manual `psql` command execution is required.
+
+---
+
+## 4. Local Testing with Docker
+
+To test the container before pushing to Coolify:
 
 ```bash
+# Option A: Full Compose (App + Postgres)
 docker compose up --build
-```
 
-- **Frontend**: `http://localhost:8080`
-- **Backend API**: `http://localhost:5000`
-- **API Health Check**: `http://localhost:5000/api/health`
+# Open in browser:
+# App: http://localhost:5000
+# Login with: user@123 / pass@123
+```
 
 To stop:
 ```bash
@@ -110,168 +118,25 @@ docker compose down
 
 ---
 
-### Option B: Building and Running Containers Individually
+## 5. Verification Checklist
 
-#### 1. Backend Service
-```bash
-# Build Backend Image
-docker build -t property-backend:latest ./server
-
-# Run Backend Container
-docker run -d \
-  --name property-backend \
-  -p 5000:5000 \
-  -e PORT=5000 \
-  -e FRONTEND_URL=http://localhost:8080 \
-  -e MSG91_AUTH_KEY=your_key_here \
-  -e MSG91_WIDGET_ID=366a666d3673323037323934 \
-  property-backend:latest
-```
-
-Verify backend health:
-```bash
-curl http://localhost:5000/api/health
-```
-
-#### 2. Frontend Service
-```bash
-# Build Frontend Image (bake in backend API URL)
-docker build \
-  --build-arg VITE_API_BASE_URL=http://localhost:5000 \
-  -t property-frontend:latest .
-
-# Run Frontend Container
-docker run -d \
-  --name property-frontend \
-  -p 8080:80 \
-  property-frontend:latest
-```
-
-Open `http://localhost:8080` in your browser.
-
----
-
-## 4. Coolify Production Deployment Step-by-Step
-
-### Domain Preparation
-Decide on your production domains (replace `YOUR_DOMAIN.com`):
-- Frontend: `https://YOUR_DOMAIN.com`
-- Backend API: `https://api.YOUR_DOMAIN.com`
-
-Make sure your DNS A/CNAME records point `YOUR_DOMAIN.com` and `api.YOUR_DOMAIN.com` to your Coolify server IP.
-
----
-
-### Step 1: Deploy Backend Service in Coolify
-
-1. In Coolify, navigate to your Project & Environment > **+ New Resource** > **Application**.
-2. Select your Git repository.
-3. Configure the Build settings:
-   - **Build Pack**: `Dockerfile`
-   - **Base Directory**: `/server` (or context root with Dockerfile `./server/Dockerfile`)
-   - **Dockerfile Path**: `Dockerfile` (or `./server/Dockerfile`)
-4. Configure General settings:
-   - **Name**: `pureframe-backend`
-   - **Domains**: `https://api.YOUR_DOMAIN.com`
-   - **Exposed Port**: `5000`
-5. Configure Environment Variables in Coolify:
-   ```ini
-   PORT=5000
-   NODE_ENV=production
-   FRONTEND_URL=https://YOUR_DOMAIN.com
-   MSG91_AUTH_KEY=<your_real_msg91_auth_key>
-   MSG91_WIDGET_ID=366a666d3673323037323934
-   MSG91_TEMPLATE_ID=
-   MSG91_SENDER_ID=
-   PGHOST=<coolify_postgres_host_or_ip>
-   PGPORT=5432
-   PGUSER=postgres
-   PGDATABASE=pureframe_db
-   PGPASSWORD=<coolify_postgres_password>
-   ```
-6. Click **Deploy**.
-7. Once deployed, verify in browser or terminal:
-   ```bash
-   curl https://api.YOUR_DOMAIN.com/api/health
-   ```
-   Expected response:
-   ```json
-   {
-     "success": true,
-     "message": "API is running",
-     "database": "connected"
-   }
-   ```
-
----
-
-### Step 2: Deploy Frontend Service in Coolify
-
-1. In Coolify, click **+ New Resource** > **Application**.
-2. Select the same Git repository.
-3. Configure the Build settings:
-   - **Build Pack**: `Dockerfile`
-   - **Base Directory**: `/`
-   - **Dockerfile Path**: `Dockerfile`
-4. Configure Build Arguments (or Build Environment Variables in Coolify):
-   ```ini
-   VITE_API_BASE_URL=https://api.YOUR_DOMAIN.com
-   ```
-   *(Note: Vite bakes this variable into the compiled bundle during `npm run build` in Stage 1).*
-5. Configure General settings:
-   - **Name**: `pureframe-frontend`
-   - **Domains**: `https://YOUR_DOMAIN.com`
-   - **Exposed Port**: `80`
-6. Click **Deploy**.
-7. Coolify's Traefik reverse proxy will automatically generate and attach Let's Encrypt SSL certificates for HTTPS.
-
----
-
-### Step 3: Database Setup (PostgreSQL in Coolify)
-
-You have two choices for PostgreSQL:
-
-#### Choice A: Coolify-Managed PostgreSQL (Recommended)
-1. In Coolify, go to your Project > **+ New Resource** > **Database** > **PostgreSQL**.
-2. Set container name / database name: `pureframe_db`.
-3. Coolify automatically creates persistent Docker volumes for PostgreSQL data, ensuring no data loss on redeploys.
-4. Coolify will display the generated internal connection details:
-   - Internal Host (e.g., `postgresql` or service UUID)
-   - Port: `5432`
-   - User: `postgres`
-   - Password: `<generated_password>`
-   - Database: `pureframe_db`
-   - Or a full `DATABASE_URL` (e.g., `postgresql://postgres:pass@postgresql:5432/pureframe_db`).
-5. Copy these values directly into your **pureframe-backend** environment variables.
-6. **Initialize Tables**: Run the schema from `server/init-db.sql` against the database via Coolify's PostgreSQL Terminal/Web CLI or via psql:
-   ```bash
-   psql -h <HOST> -U postgres -d pureframe_db -f server/init-db.sql
-   ```
-
-#### Choice B: External PostgreSQL (Supabase, Neon, AWS RDS)
-If using an external managed PostgreSQL provider:
-1. Copy the connection string or host/user/password provided by your cloud provider.
-2. In Coolify's backend service, set `DATABASE_URL` or `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`, `PGPASSWORD`.
-3. If SSL is required by your provider, node-postgres handles `DATABASE_URL?sslmode=require` automatically.
-4. Execute `server/init-db.sql` once on your remote database to create the `users` and `plans` tables.
-
----
-
-### Step 4: Verification & Smoke Testing
-
-1. **SPA Routing**:
-   - Navigate to `https://YOUR_DOMAIN.com`
-   - Refresh on sub-paths: `https://YOUR_DOMAIN.com/property/123`, `https://YOUR_DOMAIN.com/plans`
-   - Confirm Nginx returns `index.html` without 404 errors.
-2. **Health Check**:
-   - Visit `https://api.YOUR_DOMAIN.com/api/health`
-   - Verify it returns HTTP 200 with `"database": "connected"`.
-3. **CORS Verification**:
-   - Check browser console on `https://YOUR_DOMAIN.com`; ensure no CORS blocking errors occur when calling `https://api.YOUR_DOMAIN.com/api/...`.
-4. **OTP Flow Verification**:
-   - Open login modal on frontend.
-   - Enter test mobile number.
-   - Click "Get OTP".
-   - Confirm OTP SMS / WhatsApp arrives.
-   - Enter OTP and confirm authentication succeeds.
-
+1. **Health Check**:
+   - Visit `https://your-domain.com/api/health`
+   - Expected JSON:
+     ```json
+     {
+       "success": true,
+       "message": "API is running",
+       "database": "connected"
+     }
+     ```
+2. **Citizen Login**:
+   - Visit `https://your-domain.com/`
+   - Enter `user@123` and `pass@123` (or click "Fill Credentials").
+   - Click Sign In. Confirm dashboard and Pune property repository loads.
+3. **Deed Unlocks**:
+   - Open any property transaction and verify deed unlock works with unlimited enterprise access.
+4. **Admin Portal**:
+   - Navigate to `/admin`.
+   - Enter `user@123` and `pass@123`.
+   - Verify official Admin Panel loads with document retrieval, verification, and PDF issuance.

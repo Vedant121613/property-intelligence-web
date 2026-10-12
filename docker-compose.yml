@@ -1,68 +1,49 @@
 services:
   # ========================================================
-  # React / Vite SPA Frontend (Nginx Alpine)
+  # Pureframe Full-Stack Application (React SPA + Express API)
   # ========================================================
-  frontend:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:5000
-    container_name: pureframe-frontend
-    ports:
-      - "8080:80"
-    depends_on:
-      backend:
-        condition: service_healthy
+    container_name: pureframe-app
     restart: unless-stopped
-
-  # ========================================================
-  # Node.js Express Backend API
-  # ========================================================
-  backend:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    container_name: pureframe-backend
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:5000"
     environment:
       - PORT=5000
       - NODE_ENV=production
-      - FRONTEND_URL=http://localhost:8080,http://localhost:5173,http://localhost:5174
-      - MSG91_AUTH_KEY=${MSG91_AUTH_KEY}
-      - MSG91_WIDGET_ID=${MSG91_WIDGET_ID}
-      - MSG91_TEMPLATE_ID=${MSG91_TEMPLATE_ID}
-      - MSG91_SENDER_ID=${MSG91_SENDER_ID}
-      - PGHOST=${PGHOST:-db}
-      - PGPORT=${PGPORT:-5432}
-      - PGUSER=${PGUSER:-postgres}
-      - PGDATABASE=${PGDATABASE:-pureframe_db}
-      - PGPASSWORD=${PGPASSWORD:-postgres}
-    env_file:
-      - path: ./server/.env
-        required: false
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-pureframe_db}
+      - SINGLE_USER_NAME=${SINGLE_USER_NAME:-user@123}
+      - SINGLE_USER_PASS=${SINGLE_USER_PASS:-pass@123}
+      - MSG91_AUTH_KEY=${MSG91_AUTH_KEY:-}
+      - MSG91_WIDGET_ID=${MSG91_WIDGET_ID:-}
     depends_on:
       db:
-        condition: service_started
-    restart: unless-stopped
+        condition: service_healthy
 
   # ========================================================
-  # PostgreSQL Database (Local testing)
+  # PostgreSQL Database Service
   # ========================================================
   db:
     image: postgres:16-alpine
     container_name: pureframe-postgres
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: pureframe_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-pureframe_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./server/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-pureframe_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
+    name: pureframe_pgdata

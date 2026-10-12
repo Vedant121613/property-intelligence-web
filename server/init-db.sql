@@ -1,22 +1,36 @@
--- Pureframe Local PostgreSQL Schema
+-- Pureframe PostgreSQL Schema & Single User Initialization
 -- Database: pureframe_db
 
--- Drop tables if needed for clean re-init
+-- 1. Users Table (Strict Single User Architecture)
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
-    phone VARCHAR(20) NOT NULL UNIQUE,
+    phone VARCHAR(50) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
-    free_attempts_left INTEGER NOT NULL DEFAULT 3,
+    free_attempts_left INTEGER NOT NULL DEFAULT 999,
     free_attempts_used INTEGER NOT NULL DEFAULT 0,
-    is_payment_done BOOLEAN NOT NULL DEFAULT FALSE,
-    selected_plan VARCHAR(50) NOT NULL DEFAULT 'none',
-    plan_activated_at TIMESTAMP,
+    is_payment_done BOOLEAN NOT NULL DEFAULT TRUE,
+    selected_plan VARCHAR(50) NOT NULL DEFAULT 'enterprise',
+    plan_activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     unlocked_deeds JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Plans Reference Table
+-- Delete any old non-authorized users to strictly maintain single-user integrity
+DELETE FROM users WHERE phone != 'user@123';
+
+-- Seed the single authorized user (user@123) with full unlocked privileges
+INSERT INTO users (phone, name, free_attempts_left, free_attempts_used, is_payment_done, selected_plan, plan_activated_at, unlocked_deeds)
+VALUES 
+    ('user@123', 'Authorized User', 999, 0, TRUE, 'enterprise', CURRENT_TIMESTAMP, '["11089052"]'::jsonb)
+ON CONFLICT (phone) DO UPDATE 
+SET name = 'Authorized User',
+    free_attempts_left = 999,
+    is_payment_done = TRUE,
+    selected_plan = 'enterprise',
+    updated_at = CURRENT_TIMESTAMP;
+
+-- 2. Plans Reference Table
 CREATE TABLE IF NOT EXISTS plans (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -59,19 +73,33 @@ VALUES
     )
 ON CONFLICT (id) DO NOTHING;
 
--- Insert default demo user (from screenshot number 9172272519)
-INSERT INTO users (phone, name, free_attempts_left, free_attempts_used, is_payment_done, selected_plan, unlocked_deeds)
-VALUES 
-    ('9172272519', 'Vedant Sharma', 3, 0, FALSE, 'none', '["11089052"]'::jsonb)
-ON CONFLICT (phone) DO UPDATE 
-SET name = EXCLUDED.name;
-
--- Sample audit log for unlocks
+-- 3. Audit Log for Unlocks
 CREATE TABLE IF NOT EXISTS unlock_logs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    phone VARCHAR(20) NOT NULL,
+    phone VARCHAR(50) NOT NULL,
     transaction_id VARCHAR(50) NOT NULL,
-    method VARCHAR(20) NOT NULL DEFAULT 'free_trial',
+    method VARCHAR(20) NOT NULL DEFAULT 'enterprise_plan',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Pune Real Estate Projects Table
+CREATE TABLE IF NOT EXISTS pune_projects (
+    id SERIAL PRIMARY KEY,
+    rera_id VARCHAR(100),
+    project_id VARCHAR(100),
+    project_name VARCHAR(255) NOT NULL,
+    project_slug VARCHAR(255),
+    registration_number VARCHAR(100),
+    date_of_registration VARCHAR(50),
+    proposed_completion_date VARCHAR(50),
+    taluka VARCHAR(100),
+    taluka_slug VARCHAR(100),
+    village VARCHAR(100),
+    village_slug VARCHAR(100),
+    address TEXT,
+    street_name VARCHAR(255),
+    locality VARCHAR(255),
+    pin_code VARCHAR(20),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

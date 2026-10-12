@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { RequestProvider } from './context/RequestContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ChatWidget from './components/ChatWidget';
-import HomePage from './pages/HomePage';
+import AuthPage from './pages/AuthPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import PuneHierarchyPage from './pages/PuneHierarchyPage';
+import ProjectPage from './pages/ProjectPage';
+import AdminPanel from './pages/AdminPanel';
+import ProfilePage from './pages/ProfilePage';
 import TransactionsPage from './pages/TransactionsPage';
 import TransactionDetailPage from './pages/TransactionDetailPage';
-import CityPage from './pages/CityPage';
-import LocalityPage from './pages/LocalityPage';
-import ProjectPage from './pages/ProjectPage';
-import ProfilePage from './pages/ProfilePage';
-import PlansPage from './pages/PlansPage';
+import ContinueRequestPage from './pages/ContinueRequestPage';
+import RequestCompletionPage from './pages/RequestCompletionPage';
 
 function AppContent() {
+  const { isAuthenticated, isAdminAuthenticated } = useAuth();
+
   const [route, setRoute] = useState(() => {
     const path = window.location.pathname;
-    if (path.startsWith('/signin') || path.startsWith('/signup') || path.startsWith('/login')) {
-      return { page: 'home', params: {} };
-    } else if (path.startsWith('/plans')) {
-      return { page: 'plans', params: {} };
+    if (path.startsWith('/admin')) {
+      return { page: 'admin', params: {} };
     } else if (path.startsWith('/profile')) {
       return { page: 'profile', params: {} };
     } else if (path.startsWith('/details/')) {
@@ -32,65 +35,48 @@ function AppContent() {
         page: 'transactions',
         params: { projectId: 'heera-solitaire', cityId: 'pune' }
       };
+    } else if (path.startsWith('/completion') || path.startsWith('/requests')) {
+      return { page: 'completion', params: {} };
+    } else if (path.startsWith('/continue')) {
+      return { page: 'continue', params: {} };
     } else if (path.startsWith('/project/')) {
       const parts = path.split('/').filter(Boolean);
       return {
         page: 'project',
         params: {
-          cityId: parts[1] || 'pune',
-          localityId: parts[2] || 'saswad-road',
-          projectId: parts[3] || 'heera-solitaire'
+          cityId: 'pune',
+          localityId: parts[2] || 'baner',
+          projectId: parts[3] || 'govind-vilas'
         }
-      };
-    } else if (path.startsWith('/location/')) {
-      const parts = path.split('/').filter(Boolean);
-      return {
-        page: 'locality',
-        params: {
-          cityId: parts[1] || 'pune',
-          localityId: parts[2] || 'saswad-road'
-        }
-      };
-    } else if (path.startsWith('/city/')) {
-      const parts = path.split('/').filter(Boolean);
-      return {
-        page: 'city',
-        params: { cityId: parts[1] || 'pune' }
       };
     }
-    // Default to Home page
+    // Default to Pune Hierarchy home
     return {
       page: 'home',
       params: {}
     };
   });
 
-  const [currentCity, setCurrentCity] = useState(route.params?.cityId || 'pune');
-
   const navigateTo = (page, params = {}) => {
     setRoute({ page, params });
-    if (params.cityId) {
-      setCurrentCity(params.cityId);
-    }
 
     let targetUrl = '/';
-    if (page === 'home' || page === 'signin' || page === 'signup') {
-      page = 'home';
+    if (page === 'home') {
       targetUrl = '/';
-    } else if (page === 'plans') {
-      targetUrl = '/plans';
+    } else if (page === 'admin') {
+      targetUrl = '/admin';
     } else if (page === 'profile') {
       targetUrl = '/profile';
+    } else if (page === 'completion') {
+      targetUrl = '/completion';
+    } else if (page === 'continue') {
+      targetUrl = '/continue';
     } else if (page === 'transactions') {
-      targetUrl = `/transactions?project=${params.projectId || 'y-square'}`;
+      targetUrl = `/transactions?project=${params.projectId || 'govind-vilas'}`;
     } else if (page === 'details') {
       targetUrl = `/details/${params.transactionId || '11089052'}`;
-    } else if (page === 'city') {
-      targetUrl = `/city/${params.cityId || currentCity}`;
-    } else if (page === 'locality') {
-      targetUrl = `/location/${params.cityId || currentCity}/${params.localityId || 'saswad-road'}`;
     } else if (page === 'project') {
-      targetUrl = `/project/${params.cityId || currentCity}/${params.localityId || 'saswad-road'}/${params.projectId || 'heera-solitaire'}`;
+      targetUrl = `/project/pune/${params.localityId || 'baner'}/${params.projectId || 'govind-vilas'}`;
     }
 
     try {
@@ -106,9 +92,6 @@ function AppContent() {
     const handlePopState = (event) => {
       if (event.state && event.state.page) {
         setRoute(event.state);
-        if (event.state.params?.cityId) {
-          setCurrentCity(event.state.params.cityId);
-        }
       }
     };
 
@@ -116,48 +99,80 @@ function AppContent() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // 1. DEDICATED ADMIN ROUTE (Completely separate with Admin Login gate asking for Admin ID and Password)
+  if (route.page === 'admin') {
+    if (!isAdminAuthenticated) {
+      return (
+        <AdminLoginPage
+          onNavigate={navigateTo}
+          onLoginSuccess={() => navigateTo('admin')}
+        />
+      );
+    }
+    return (
+      <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <main className="main-content" style={{ flex: 1 }}>
+          <AdminPanel onNavigate={navigateTo} />
+        </main>
+        <Footer onNavigate={navigateTo} />
+      </div>
+    );
+  }
+
+  // 2. CITIZEN ROUTE: If citizen is not logged in, render the clean dummy login page
+  if (!isAuthenticated) {
+    return (
+      <AuthPage 
+        onNavigate={navigateTo}
+        onLoginSuccess={() => navigateTo('home')}
+      />
+    );
+  }
+
+  // 3. CITIZEN AUTHENTICATED VIEW
   return (
-    <div className="app-container">
-      {/* Top Persistent Navbar */}
+    <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Top Persistent Navbar with Pune Only, Wallet pill, Requests badge, Admin Panel button */}
       <Navbar
-        currentCity={currentCity}
-        onSelectCity={(cityId) => {
-          if (cityId === 'mumbai') return;
-          setCurrentCity(cityId);
-          if (route.page === 'city') {
-            navigateTo('city', { cityId });
-          }
-        }}
+        currentCity="pune"
+        currentPage={route.page}
         onNavigate={navigateTo}
       />
 
-      {/* Main Page View */}
-      <main className="main-content">
-        {route.page === 'plans' && (
-          <PlansPage onNavigate={navigateTo} />
+      {/* Main Page Content */}
+      <main className="main-content" style={{ flex: 1 }}>
+        {route.page === 'home' && (
+          <PuneHierarchyPage onNavigate={navigateTo} />
         )}
 
-        {route.page === 'home' && (
-          <HomePage
-            currentCity={currentCity}
-            onSelectCity={(cityId) => {
-              if (cityId === 'mumbai') return;
-              setCurrentCity(cityId);
-            }}
+        {route.page === 'city' && (
+          <PuneHierarchyPage onNavigate={navigateTo} />
+        )}
+
+        {route.page === 'locality' && (
+          <PuneHierarchyPage onNavigate={navigateTo} />
+        )}
+
+        {route.page === 'project' && (
+          <ProjectPage
+            cityId="pune"
+            localityId={route.params.localityId || 'baner'}
+            projectId={route.params.projectId || 'govind-vilas'}
+            talukaId={route.params.talukaId}
+            villageName={route.params.villageName}
+            talukaName={route.params.talukaName}
             onNavigate={navigateTo}
           />
         )}
 
         {route.page === 'profile' && (
-          <ProfilePage
-            onNavigate={navigateTo}
-          />
+          <ProfilePage onNavigate={navigateTo} />
         )}
 
         {route.page === 'transactions' && (
           <TransactionsPage
-            projectId={route.params.projectId || 'y-square'}
-            cityId={route.params.cityId || currentCity}
+            projectId={route.params.projectId || 'govind-vilas'}
+            cityId="pune"
             onNavigate={navigateTo}
           />
         )}
@@ -169,31 +184,20 @@ function AppContent() {
           />
         )}
 
-        {route.page === 'city' && (
-          <CityPage
-            cityId={route.params.cityId || currentCity}
+        {route.page === 'continue' && (
+          <ContinueRequestPage
+            district={route.params.district || 'Pune'}
+            taluka={route.params.taluka || 'Haveli'}
+            talukaSlug={route.params.talukaSlug || 'haveli'}
+            village={route.params.village || 'Baner'}
+            villageSlug={route.params.villageSlug || 'baner'}
+            initialProject={route.params.initialProject}
             onNavigate={navigateTo}
           />
         )}
 
-        {route.page === 'locality' && (
-          <LocalityPage
-            cityId={route.params.cityId || currentCity}
-            localityId={route.params.localityId || 'saswad-road'}
-            onNavigate={navigateTo}
-          />
-        )}
-
-        {route.page === 'project' && (
-          <ProjectPage
-            cityId={route.params.cityId || currentCity}
-            localityId={route.params.localityId || 'saswad-road'}
-            projectId={route.params.projectId || 'heera-solitaire'}
-            talukaId={route.params.talukaId}
-            villageName={route.params.villageName}
-            talukaName={route.params.talukaName}
-            onNavigate={navigateTo}
-          />
+        {route.page === 'completion' && (
+          <RequestCompletionPage onNavigate={navigateTo} />
         )}
       </main>
 
@@ -209,7 +213,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <RequestProvider>
+        <AppContent />
+      </RequestProvider>
     </AuthProvider>
   );
 }

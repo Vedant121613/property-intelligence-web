@@ -7,8 +7,8 @@
  * across logins, re-logins, page refreshes, and even if the backend is temporarily offline.
  */
 
-const API_ROOT = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
-const API_BASE = `${API_ROOT}/api`;
+const API_ROOT = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+const API_BASE = API_ROOT ? `${API_ROOT}/api` : '/api';
 const REGISTRY_KEY = 'pureframe_users_registry';
 
 /**

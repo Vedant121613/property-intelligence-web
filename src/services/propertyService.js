@@ -19,6 +19,7 @@ import {
 } from '../data/mockData.js';
 
 import puneHierarchy from '../data/puneHierarchyData.js';
+import puneCoords from '../data/puneCoordinates.json';
 import {
   dbGetPuneTalukas,
   dbGetPuneVillages,
@@ -27,7 +28,38 @@ import {
   dbSearchPune
 } from './dbService.js';
 
-const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api/v1';
+const TALUKA_CENTERS = {
+  'haveli': [18.5204, 73.8567],
+  'mulshi': [18.5913, 73.7389],
+  'pune-city': [18.5196, 73.8553],
+  'mawal': [18.7547, 73.5358],
+  'baramati': [18.1517, 74.5772],
+  'khed': [18.8475, 73.8648],
+  'shirur': [18.8256, 74.3789],
+  'junnar': [19.2064, 73.8767],
+  'purandhar': [18.2778, 74.0253],
+  'daund': [18.4658, 74.5828],
+  'ambegaon': [19.0069, 73.8654],
+  'bhor': [18.1472, 73.8447],
+  'indapur': [18.1158, 75.0287],
+  'velhe': [18.2936, 73.6358],
+  'ctso-pimpri-chinchwad': [18.6279, 73.8009]
+};
+
+export function lookupCoordinates(rera, id, name, talukaSlug) {
+  if (rera && puneCoords.rera && puneCoords.rera[rera]) return puneCoords.rera[rera];
+  if (id && puneCoords.id && puneCoords.id[id]) return puneCoords.id[id];
+  if (name && puneCoords.name && puneCoords.name[name.toLowerCase()]) return puneCoords.name[name.toLowerCase()];
+  
+  const tSlug = (talukaSlug || '').toLowerCase();
+  const base = TALUKA_CENTERS[tSlug] || [18.5204, 73.8567];
+  const hash = (name || id || 'prop').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const latOffset = ((hash % 100) - 50) * 0.0002;
+  const lngOffset = (((hash * 17) % 100) - 50) * 0.0002;
+  return [parseFloat((base[0] + latOffset).toFixed(5)), parseFloat((base[1] + lngOffset).toFixed(5))];
+}
+
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '/api';
 const USE_MOCK_DATA = false;
 
 /**
@@ -281,6 +313,8 @@ export async function getProjectDetails(projectId = 'heera-solitaire', talukaSlu
     }
   ];
 
+  const [lat, lng] = lookupCoordinates(reraNo, pRecord?.projectId || projectId, projectName, taluka);
+
   return Promise.resolve({
     id: normalized,
     slug: `Pune ${taluka} ${locality} ${projectName}`,
@@ -289,6 +323,8 @@ export async function getProjectDetails(projectId = 'heera-solitaire', talukaSlu
     locality: locality,
     taluka: taluka,
     address: address,
+    latitude: lat,
+    longitude: lng,
     developer: 'Registered Real Estate Developer',
     totalUnits: '144 Units',
     soldUnits: '112 Units',

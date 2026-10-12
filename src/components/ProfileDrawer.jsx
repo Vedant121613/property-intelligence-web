@@ -155,44 +155,29 @@ export default function ProfileDrawer({
 
           <div 
             className="drawer-nav-item"
+            onClick={() => { onClose(); onNavigate('admin'); }}
+          >
+            <ShieldCheck size={18} color="#7c3aed" />
+            <span style={{ color: '#7c3aed', fontWeight: 700 }}>Admin Panel</span>
+          </div>
+
+          <div 
+            className="drawer-nav-item"
             onClick={() => handleItemClick('profile')}
           >
             <Briefcase size={18} color="#475569" />
-            <span>My Account</span>
-          </div>
-
-          <div 
-            className="drawer-nav-item"
-            onClick={() => handleItemClick('plans')}
-          >
-            <CreditCard size={18} color="#475569" />
-            <span>Plans</span>
-          </div>
-
-          <div 
-            className="drawer-nav-item"
-            onClick={() => handleItemClick('favourites')}
-          >
-            <Heart size={18} color="#475569" />
-            <span>Favourites</span>
-          </div>
-
-          <div 
-            className="drawer-nav-item"
-            onClick={() => handleItemClick('viewed')}
-          >
-            <FileText size={18} color="#475569" />
-            <span>Viewed Transactions</span>
+            <span>My Account &amp; Requests</span>
           </div>
 
           <div style={{ width: '100%', height: '1px', background: '#F1F5F9', margin: '8px 0' }} />
 
           <div 
             className="drawer-nav-item"
-            onClick={() => { onClose(); onNavigate('home'); }}
+            onClick={() => { onClose(); logout(); }}
+            style={{ color: '#ef4444' }}
           >
-            <Info size={18} color="#64748B" />
-            <span>About Us</span>
+            <LogOut size={18} color="#ef4444" />
+            <span style={{ color: '#ef4444', fontWeight: 700 }}>Log Out</span>
           </div>
         </div>
 
@@ -200,8 +185,7 @@ export default function ProfileDrawer({
         <div style={{ padding: '16px 20px', borderTop: '1px solid #F1F5F9', background: '#F8FAFC' }}>
           <button
             type="button"
-            onClick={() => { onClose(); onNavigate('profile'); }}
-            className="hero-search-btn"
+            onClick={() => { onClose(); logout(); }}
             style={{
               width: '100%',
               padding: '10px',
@@ -209,11 +193,17 @@ export default function ProfileDrawer({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px'
+              gap: '8px',
+              background: '#fee2e2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer'
             }}
           >
-            <User size={16} />
-            <span>View Full Profile</span>
+            <LogOut size={16} />
+            <span>Log Out</span>
           </button>
         </div>
       </div>

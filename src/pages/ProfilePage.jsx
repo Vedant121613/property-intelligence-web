@@ -23,6 +23,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useRequests } from '../context/RequestContext';
 import { Y_SQUARE_TRANSACTIONS, PROJECT_DETAILS, CITIES } from '../data/mockData';
 
 export default function ProfilePage({ onNavigate }) {
@@ -41,8 +42,9 @@ export default function ProfilePage({ onNavigate }) {
     selectedPlan, 
     resetAttempts
   } = useAuth();
+  const { requests, walletBalance } = useRequests();
 
-  const [activeTab, setActiveTab] = useState('unlocked');
+  const [activeTab, setActiveTab] = useState('orders');
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
   const [editPhone, setEditPhone] = useState(user?.phone || '');
@@ -602,7 +604,7 @@ export default function ProfilePage({ onNavigate }) {
             }}
           >
             <FileText size={17} />
-            <span>Certified Agreements ({agreementOrders.length})</span>
+            <span>Document Requests ({requests.length})</span>
           </button>
         </div>
 
@@ -847,7 +849,7 @@ export default function ProfilePage({ onNavigate }) {
           </div>
         )}
 
-        {/* Tab 3: Agreement Orders */}
+        {/* Tab 3: Document Requests & Shared Links */}
         {activeTab === 'orders' && (
           <div 
             style={{
@@ -860,83 +862,114 @@ export default function ProfilePage({ onNavigate }) {
           >
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1E293B', margin: 0 }}>
-                Certified Agreement Copies
+                Document Requests &amp; Fulfilled Links
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#64748B', marginTop: '2px', margin: 0 }}>
-                Certified deed agreements retrieved directly from the state stamp and registry archives.
+                Registered Deeds and Index 2 documents requested through Pureframe Wallet.
               </p>
             </div>
 
-            {agreementOrders.length > 0 ? (
+            {requests.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {agreementOrders.map((order) => (
-                  <div 
-                    key={order.id}
-                    style={{
-                      background: '#F8FAFC',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: '12px',
-                      padding: '18px 20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>{order.id}</span>
-                        <span 
-                          style={{
-                            background: '#ECFDF5',
-                            border: '1px solid #A7F3D0',
-                            color: '#059669',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '12px'
-                          }}
-                        >
-                          {order.status}
-                        </span>
+                {requests.map((req) => {
+                  const isShared = req.status === 'shared';
+                  return (
+                    <div 
+                      key={req.id}
+                      style={{
+                        background: isShared ? '#F0FDF4' : '#FFFBEB',
+                        border: `1px solid ${isShared ? '#BBF7D0' : '#FDE68A'}`,
+                        borderRadius: '12px',
+                        padding: '18px 20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px'
+                      }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B' }}>{req.id}</span>
+                            <span 
+                              style={{
+                                background: isShared ? '#ECFDF5' : '#FEF3C7',
+                                border: `1px solid ${isShared ? '#A7F3D0' : '#FDE68A'}`,
+                                color: isShared ? '#059669' : '#B45309',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '12px'
+                              }}
+                            >
+                              {isShared ? '✓ Link Shared' : '⏳ Pending Admin Link'}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                              Paid via Wallet: <b>₹{req.fee}</b>
+                            </span>
+                          </div>
+
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1E293B', marginTop: '4px', margin: 0 }}>
+                            {req.projectName} • {req.docTitle}
+                          </h4>
+                          <p style={{ fontSize: '0.775rem', color: '#64748B', margin: '2px 0 0' }}>
+                            RERA: {req.reraId} • {req.village}, {req.taluka}, Pune
+                          </p>
+                        </div>
+
+                        {isShared && req.sharedLink ? (
+                          <a
+                            href={req.sharedLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              background: '#16A34A',
+                              color: '#FFFFFF',
+                              padding: '9px 18px',
+                              borderRadius: '8px',
+                              fontSize: '0.825rem',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <Download size={14} />
+                            <span>Open Shared Document</span>
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '0.78rem', color: '#B45309', fontWeight: 600 }}>
+                            Awaiting fulfillment by MahaRERA Admin
+                          </span>
+                        )}
                       </div>
 
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#1E293B', marginTop: '4px', margin: 0 }}>
-                        {order.projectName} • Unit {order.unitNo}
-                      </h4>
-                      <p style={{ fontSize: '0.775rem', color: '#64748B', margin: '2px 0 0' }}>{order.locality} • Ordered {order.date}</p>
+                      {isShared && req.adminNotes && (
+                        <div style={{
+                          background: '#FFFFFF',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          color: '#15803D',
+                          border: '1px solid #BBF7D0'
+                        }}>
+                          <b>Admin Note:</b> {req.adminNotes}
+                        </div>
+                      )}
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#1E293B' }}>{order.price}</span>
-                      <button
-                        type="button"
-                        style={{
-                          background: '#0F172A',
-                          color: '#FFFFFF',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          fontSize: '0.825rem',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          border: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Download size={14} />
-                        <span>Download PDF</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '32px 16px', color: '#64748B' }}>
                 <FileText size={32} style={{ margin: '0 auto 8px', display: 'block', color: '#94A3B8' }} />
-                <p style={{ margin: 0, fontSize: '0.875rem' }}>No certified agreements ordered yet.</p>
+                <p style={{ margin: 0, fontSize: '0.875rem' }}>No document requests placed yet.</p>
               </div>
             )}
           </div>
