@@ -14,6 +14,8 @@ import TransactionsPage from './pages/TransactionsPage';
 import TransactionDetailPage from './pages/TransactionDetailPage';
 import ContinueRequestPage from './pages/ContinueRequestPage';
 import RequestCompletionPage from './pages/RequestCompletionPage';
+import SupremeRivanaPage from './pages/SupremeRivanaPage';
+import { FEATURED_PROJECTS } from './data/featuredProjectsData';
 
 function AppContent() {
   const { isAuthenticated, isAdminAuthenticated } = useAuth();
@@ -49,6 +51,23 @@ function AppContent() {
           projectId: parts[3] || 'govind-vilas'
         }
       };
+    } else {
+      const cleanPath = path.replace(/^\//, '').replace(/\/$/, '');
+      const matched = FEATURED_PROJECTS.find(p => 
+        p.slug === cleanPath || 
+        p.id === cleanPath || 
+        p.alias === cleanPath ||
+        (cleanPath && p.slug.includes(cleanPath)) ||
+        (cleanPath && cleanPath.includes(p.alias))
+      );
+      if (matched || path.startsWith('/featured-project/')) {
+        const parts = path.split('/').filter(Boolean);
+        const resolvedId = matched ? matched.id : (parts[1] || 'supreme-rivana-punawale');
+        return {
+          page: 'featured-project',
+          params: { projectId: resolvedId }
+        };
+      }
     }
     // Default to Pune Hierarchy home
     return {
@@ -77,6 +96,17 @@ function AppContent() {
       targetUrl = `/details/${params.transactionId || '11089052'}`;
     } else if (page === 'project') {
       targetUrl = `/project/pune/${params.localityId || 'baner'}/${params.projectId || 'govind-vilas'}`;
+    } else if (page === 'featured-project') {
+      const matched = FEATURED_PROJECTS.find(p => 
+        p.id === params.projectId || 
+        p.slug === params.projectId || 
+        p.alias === params.projectId
+      );
+      if (matched) {
+        targetUrl = `/${matched.slug}`;
+      } else {
+        targetUrl = `/featured-project/${params.projectId || 'supreme-rivana-punawale'}`;
+      }
     }
 
     try {
@@ -119,8 +149,8 @@ function AppContent() {
     );
   }
 
-  // 2. CITIZEN ROUTE: If citizen is not logged in, render the clean dummy login page
-  if (!isAuthenticated) {
+  // 2. CITIZEN ROUTE: If citizen is not logged in, render the clean login page (unless viewing featured project)
+  if (!isAuthenticated && route.page !== 'featured-project') {
     return (
       <AuthPage 
         onNavigate={navigateTo}
@@ -151,6 +181,13 @@ function AppContent() {
 
         {route.page === 'locality' && (
           <PuneHierarchyPage onNavigate={navigateTo} />
+        )}
+
+        {route.page === 'featured-project' && (
+          <SupremeRivanaPage
+            projectId={route.params.projectId || 'supreme-rivana'}
+            onNavigate={navigateTo}
+          />
         )}
 
         {route.page === 'project' && (

@@ -1,15 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  Building2, 
-  Lock, 
-  User, 
-  ArrowRight, 
-  Sparkles,
-  MapPin,
-  CheckCircle2,
-  Wallet,
-  ShieldCheck
-} from 'lucide-react';
+import { Building2, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function AuthPage({ onNavigate, onLoginSuccess }) {
@@ -17,108 +7,94 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setErrorMsg('Please enter both username and password.');
+      setErrorMsg('Please enter both Username and Password.');
       return;
     }
     setErrorMsg('');
-    const res = await login(username.trim(), password.trim());
-    if (res.success) {
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      } else if (onNavigate) {
-        onNavigate('home');
+    setIsLoading(true);
+
+    try {
+      const res = await login(username.trim(), password.trim());
+      if (res.success) {
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else if (onNavigate) {
+          onNavigate('home');
+        }
+      } else {
+        setErrorMsg(res.message || 'Access denied: Invalid credentials.');
       }
-    } else {
-      setErrorMsg(res.message || 'Access denied: Invalid credentials.');
+    } catch {
+      setErrorMsg('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'radial-gradient(ellipse at top, #0f172a 0%, #090d16 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '32px 16px',
-      color: '#f8fafc',
+      backgroundColor: '#f8fafc',
+      padding: '24px 16px',
       fontFamily: 'Inter, system-ui, sans-serif'
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '460px',
-        background: 'rgba(30, 41, 59, 0.75)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.12)',
-        borderRadius: '24px',
+        maxWidth: '400px',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
         padding: '36px 32px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)'
+        boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.08)'
       }}>
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+        {/* Brand / Icon */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '64px',
-            height: '64px',
-            borderRadius: '18px',
-            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-            boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.5)',
-            marginBottom: '16px'
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: '#eff6ff',
+            color: '#1d4ed8',
+            marginBottom: '14px'
           }}>
-            <Building2 size={32} color="#ffffff" />
+            <Building2 size={26} />
           </div>
-
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(59, 130, 246, 0.15)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            padding: '4px 12px',
-            borderRadius: '999px',
-            fontSize: '0.75rem',
-            color: '#60a5fa',
-            fontWeight: 700,
-            marginBottom: '12px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          }}>
-            <MapPin size={12} />
-            <span>PUNE DISTRICT PROPERTY REPOSITORY</span>
-          </div>
-
           <h1 style={{
-            fontSize: '1.65rem',
-            fontWeight: 800,
-            letterSpacing: '-0.025em',
-            margin: '0 0 6px',
-            color: '#ffffff'
+            fontSize: '1.4rem',
+            fontWeight: 700,
+            color: '#0f172a',
+            margin: '0 0 6px 0'
           }}>
-            Sign-In
+            User Login
           </h1>
           <p style={{
             fontSize: '0.875rem',
-            color: '#94a3b8',
+            color: '#64748b',
             margin: 0
           }}>
-            Enter your credentials to continue
+            Enter your credentials to access the portal
           </p>
         </div>
 
-        {/* Form */}
+        {/* Login Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{
               display: 'block',
-              fontSize: '0.8rem',
+              fontSize: '0.825rem',
               fontWeight: 600,
-              color: '#cbd5e1',
+              color: '#334155',
               marginBottom: '6px'
             }}>
               Username / ID
@@ -128,29 +104,29 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username or ID"
+                placeholder="Enter Username"
+                required
                 style={{
                   width: '100%',
-                  padding: '12px 14px 12px 40px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: '#ffffff',
+                  padding: '10px 12px 10px 36px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
                   fontSize: '0.9rem',
+                  color: '#0f172a',
                   outline: 'none',
                   boxSizing: 'border-box'
                 }}
               />
-              <User size={16} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '14px' }} />
+              <User size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
             </div>
           </div>
 
           <div>
             <label style={{
               display: 'block',
-              fontSize: '0.8rem',
+              fontSize: '0.825rem',
               fontWeight: 600,
-              color: '#cbd5e1',
+              color: '#334155',
               marginBottom: '6px'
             }}>
               Password
@@ -160,31 +136,31 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder="Enter Password"
+                required
                 style={{
                   width: '100%',
-                  padding: '12px 14px 12px 40px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: '#ffffff',
+                  padding: '10px 12px 10px 36px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
                   fontSize: '0.9rem',
+                  color: '#0f172a',
                   outline: 'none',
                   boxSizing: 'border-box'
                 }}
               />
-              <Lock size={16} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '14px' }} />
+              <Lock size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '12px' }} />
             </div>
           </div>
 
           {errorMsg && (
             <div style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#fca5a5',
-              padding: '10px 14px',
+              padding: '10px 12px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
               borderRadius: '8px',
-              fontSize: '0.8rem'
+              color: '#b91c1c',
+              fontSize: '0.825rem'
             }}>
               {errorMsg}
             </div>
@@ -192,57 +168,57 @@ export default function AuthPage({ onNavigate, onLoginSuccess }) {
 
           <button
             type="submit"
+            disabled={isLoading}
             style={{
-              marginTop: '6px',
-              padding: '13px',
-              borderRadius: '10px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              marginTop: '4px',
+              padding: '11px',
+              borderRadius: '8px',
+              backgroundColor: '#1d4ed8',
               color: '#ffffff',
-              fontSize: '0.95rem',
-              fontWeight: 800,
-              cursor: 'pointer',
+              fontSize: '0.925rem',
+              fontWeight: 600,
+              border: 'none',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              boxShadow: '0 10px 20px -5px rgba(37, 99, 235, 0.4)'
+              opacity: isLoading ? 0.8 : 1,
+              transition: 'background-color 0.15s ease'
+            }}
+            onMouseOver={(e) => {
+              if (!isLoading) e.currentTarget.style.backgroundColor = '#1e40af';
+            }}
+            onMouseOut={(e) => {
+              if (!isLoading) e.currentTarget.style.backgroundColor = '#1d4ed8';
             }}
           >
-            <span>Sign In to Pune Portal</span>
-            <ArrowRight size={17} />
+            <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
+            <ArrowRight size={16} />
           </button>
         </form>
 
-        {/* Separate Admin Portal Link */}
-        <div style={{
-          marginTop: '24px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          paddingTop: '18px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '8px' }}>
-            Are you an authorized MahaRERA / IGR Admin Officer?
-          </div>
+        {/* Link to Admin Portal */}
+        <div style={{ marginTop: '24px', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
           <button
             type="button"
             onClick={() => onNavigate('admin')}
             style={{
-              background: 'rgba(124, 58, 237, 0.15)',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-              color: '#d8b4fe',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              fontWeight: 700,
+              background: 'none',
+              border: 'none',
+              color: '#64748b',
+              fontSize: '0.825rem',
+              fontWeight: 500,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px'
             }}
+            onMouseOver={(e) => e.currentTarget.style.color = '#1d4ed8'}
+            onMouseOut={(e) => e.currentTarget.style.color = '#64748b'}
           >
             <ShieldCheck size={14} />
-            <span>Go to Admin Portal Login Gate →</span>
+            <span>Admin Portal Login</span>
           </button>
         </div>
       </div>

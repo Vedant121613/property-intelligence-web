@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CITIES, HOMEPAGE_RECENT_TRANSACTIONS, USER_BENEFITS } from '../data/mockData';
 import CityMonumentCards from '../components/CityMonumentCards';
+import FeaturedProjectsSection from '../components/FeaturedProjectsSection';
 
 export default function HomePage({ onNavigate, currentCity, onSelectCity }) {
   const [selectedCity, setSelectedCity] = useState(currentCity || 'pune');
@@ -233,6 +234,9 @@ export default function HomePage({ onNavigate, currentCity, onSelectCity }) {
         onSelectCity={onSelectCity}
         onNavigate={onNavigate}
       />
+
+      {/* Curated Featured Projects Section matching reference designs */}
+      <FeaturedProjectsSection onNavigate={onNavigate} />
 
       {/* Aggregation Value Prop Section */}
       <section className="aggregation-banner">

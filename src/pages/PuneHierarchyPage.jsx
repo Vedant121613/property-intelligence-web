@@ -17,6 +17,7 @@ import {
 import puneHierarchy from '../data/puneHierarchyData.js';
 import Breadcrumbs from '../components/Breadcrumbs';
 import HomeDropdownSelector from '../components/HomeDropdownSelector';
+import FeaturedProjectsSection from '../components/FeaturedProjectsSection';
 
 export default function PuneHierarchyPage({ onNavigate }) {
   // Navigation drill-down state:
@@ -317,6 +318,11 @@ export default function PuneHierarchyPage({ onNavigate }) {
                   <ChevronRight size={20} />
                 </div>
               </div>
+            </div>
+
+            {/* CURATED FEATURED RESIDENTIAL PROJECTS SECTION (Matching homeswithakshay reference) */}
+            <div style={{ marginTop: '48px', marginLeft: '-24px', marginRight: '-24px' }}>
+              <FeaturedProjectsSection onNavigate={onNavigate} />
             </div>
           </div>
         )}

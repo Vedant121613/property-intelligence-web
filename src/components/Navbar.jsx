@@ -107,6 +107,46 @@ export default function Navbar({
           {/* Right Navigation Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             
+            {/* Featured Projects Link Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (currentPage !== 'home') {
+                  onNavigate('home');
+                }
+                setTimeout(() => {
+                  const el = document.getElementById('featured-projects-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+              }}
+              title="Explore Curated Pune Projects"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#FAF7F2',
+                border: '1px solid #E5E0D8',
+                color: '#1A1A1A',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#F4EFE6';
+                e.currentTarget.style.borderColor = '#C59B27';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#FAF7F2';
+                e.currentTarget.style.borderColor = '#E5E0D8';
+              }}
+            >
+              <Sparkles size={14} color="#C59B27" />
+              <span>Projects</span>
+            </button>
+
             {/* Wallet Button */}
             <button
               type="button"
