@@ -8,9 +8,12 @@
 FROM node:22-alpine AS frontend-builder
 WORKDIR /build
 
+# Ensure dev dependencies (Vite) are installed even if Coolify passes NODE_ENV=production
+ENV NODE_ENV=development
+
 # Copy root frontend package files
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 # Copy frontend source code
 COPY index.html ./
