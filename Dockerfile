@@ -45,12 +45,15 @@ ENV PORT=5000
 ENV SINGLE_USER_NAME=user@123
 ENV SINGLE_USER_PASS=pass@123
 
+# Install curl & wget for Coolify container healthcheck
+RUN apk add --no-cache curl wget
+
 # Expose HTTP port
 EXPOSE 5000
 
-# Container healthcheck (uses Node 22 native fetch and checks dynamic PORT)
-HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "const port = process.env.PORT || 5000; fetch('http://127.0.0.1:' + port + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+# Container healthcheck (fast check with curl / wget)
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
+  CMD curl -f http://127.0.0.1:5000/api/health || wget -qO- http://127.0.0.1:5000/api/health || exit 1
 
 # Start application server
 CMD ["node", "server/index.js"]

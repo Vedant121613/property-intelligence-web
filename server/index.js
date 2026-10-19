@@ -92,21 +92,24 @@ function checkMobileCooldown(cleanMobile) {
 // 3. API Health Check
 // ========================================================
 app.get('/api/health', async (req, res) => {
+  let dbStatus = 'disconnected';
+  let currentTime = null;
   try {
-    const dbCheck = await query('SELECT NOW() as current_time');
-    res.json({
-      success: true,
-      message: 'API is running',
-      database: 'connected',
-      timestamp: dbCheck.rows[0].current_time
-    });
+    const dbPromise = query('SELECT NOW() as current_time');
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('DB timeout')), 800));
+    const dbCheck = await Promise.race([dbPromise, timeoutPromise]);
+    dbStatus = 'connected';
+    currentTime = dbCheck.rows[0].current_time;
   } catch (err) {
-    res.json({
-      success: true,
-      message: 'API is running (Database offline)',
-      database: 'disconnected'
-    });
+    dbStatus = 'disconnected';
   }
+
+  res.status(200).json({
+    success: true,
+    message: dbStatus === 'connected' ? 'API is running' : 'API is running (Database offline)',
+    database: dbStatus,
+    timestamp: currentTime || new Date().toISOString()
+  });
 });
 
 // ========================================================
